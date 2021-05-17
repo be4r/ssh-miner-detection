@@ -7,15 +7,19 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"io/ioutil"
 	"strconv"
 	"sync"
 	"time"
 
+	"net/http"
+
 	"github.com/containerssh/log"
 	"github.com/containerssh/metrics"
 	"github.com/containerssh/structutils"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
@@ -164,6 +168,7 @@ func (d *dockerV20Client) createContainer(
 	tty *bool,
 	cmd []string,
 ) (dockerContainer, error) {
+
 	logger := d.logger
 	logger.Debug(log.NewMessage(MContainerCreate, "Creating container..."))
 	containerConfig := d.config.Execution.Launch.ContainerConfig
@@ -176,15 +181,28 @@ func (d *dockerV20Client) createContainer(
 loop:
 	for {
 		var body container.ContainerCreateCreatedBody
+
 		d.backendRequestsMetric.Increment()
 		body, lastError = d.dockerClient.ContainerCreate(
 			ctx,
 			newConfig,
-			d.config.Execution.Launch.HostConfig,
+			&container.HostConfig{
+				Mounts: []mount.Mount{
+					{
+						Type:   mount.TypeBind,
+						Source: "/home/be4r/tmp",
+						Target: "/tmp",
+					},
+				},
+			},
+			//d.config.Execution.Launch.HostConfig,
 			d.config.Execution.Launch.NetworkConfig,
 			d.config.Execution.Launch.Platform,
 			d.config.Execution.Launch.ContainerName,
 		)
+		//its possible to check logger, but faster this way
+		fmt.Println("CREATING container " + body.ID)
+		//time.Sleep(10 * time.Second)
 		if lastError == nil {
 			return &dockerV20Container{
 				config:                d.config,
@@ -199,6 +217,7 @@ loop:
 				removeLock:            &sync.Mutex{},
 			}, nil
 		}
+		fmt.Println("FAILED creating container")
 		d.backendFailuresMetric.Increment()
 		logger.Debug(log.Wrap(lastError, EFailedContainerCreate, "failed to create container, retrying in 10 seconds"))
 		select {
@@ -206,6 +225,7 @@ loop:
 			break loop
 		case <-time.After(10 * time.Second):
 		}
+		fmt.Fprintln(os.Stdout, "RETRYING " + body.ID)
 	}
 	if lastError == nil {
 		lastError = fmt.Errorf("timeout")
@@ -321,7 +341,7 @@ loop:
 	return nil, err
 }
 
-func (d *dockerV20Container) start(ctx context.Context) error {
+func (d *dockerV20Container) start(ctx context.Context) (string, error) {
 	d.logger.Debug(log.NewMessage(MContainerStart, "Starting container..."))
 	var lastError error
 loop:
@@ -333,7 +353,7 @@ loop:
 			types.ContainerStartOptions{},
 		)
 		if lastError == nil {
-			return nil
+			return d.containerID, nil
 		}
 		d.backendFailuresMetric.Increment()
 		d.logger.Debug(log.Wrap(lastError, EFailedContainerStart, "failed to start container, retrying in 10 seconds"))
@@ -353,7 +373,8 @@ loop:
 		"failed to start container, giving up",
 	)
 	d.logger.Error(err)
-	return err
+	http.Get("http://127.0.0.1:38393/FINISH+" + d.containerID)
+	return d.containerID, err
 }
 
 func (d *dockerV20Container) remove(ctx context.Context) error {
@@ -988,6 +1009,9 @@ func (d *dockerV20Exec) readPIDFromStdout(stdout io.Writer) error {
 }
 
 func (d *dockerV20Exec) finished(onExit func(exitStatus int)) {
+	if _, err := http.Get("http://127.0.0.1:38393/FINISH+" + d.container.containerID); err != nil {
+	fmt.Fprintln(os.Stdout, "cant write finish: " + err.Error())
+	}
 	d.lock.Lock()
 	if d.pid == -1 {
 		d.lock.Unlock()
@@ -1086,6 +1110,7 @@ func (d *dockerV20Exec) execInspect(ctx context.Context, onExit func(exitStatus 
 
 func (d *dockerV20Exec) stopContainer(ctx context.Context) error {
 	d.logger.Debug(log.NewMessage(MContainerStop, "Stopping container..."))
+	http.Get("http://127.0.0.1:38393/FINISH+" + d.container.containerID) // added this; delete if doesnt work
 	var lastError error
 loop:
 	for {

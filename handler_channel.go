@@ -5,7 +5,8 @@ import (
 	"errors"
 	"io"
 	"strings"
-
+	"fmt"
+	"os"
 	"github.com/containerssh/log"
 	"github.com/containerssh/sshserver"
 	"github.com/containerssh/unixutils"
@@ -165,7 +166,7 @@ func (c *channelHandler) handleExecModeSession(
 		removeContainer()
 		return err
 	}
-	if err := cnt.start(ctx); err != nil {
+	if _, err := cnt.start(ctx); err != nil {
 		removeContainer()
 		return err
 	}
@@ -183,6 +184,7 @@ func (c *channelHandler) OnExecRequest(
 	_ uint64,
 	program string,
 ) error {
+	fmt.Fprintln(os.Stdout, "Exec: " + program)
 	if c.networkHandler.config.Execution.disableCommand {
 		return log.UserMessage(
 			EProgramExecutionDisabled,
@@ -208,6 +210,7 @@ func (c *channelHandler) OnShell(
 }
 
 func (c *channelHandler) getDefaultShell() []string {
+	fmt.Fprintln(os.Stdout, "Default shell: " + strings.Join(c.networkHandler.config.Execution.ShellCommand, "::"))
 	return c.networkHandler.config.Execution.ShellCommand
 }
 

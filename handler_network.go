@@ -7,6 +7,9 @@ import (
 	"strings"
 	"sync"
 
+	"net/http"
+//	"time"
+
 	"github.com/containerssh/log"
 	"github.com/containerssh/sshserver"
 )
@@ -60,6 +63,7 @@ func (n *networkHandler) OnHandshakeSuccess(username string) (
 	labels["containerssh_connection_id"] = n.connectionID
 	labels["containerssh_ip"] = n.client.IP.String()
 	labels["containerssh_username"] = n.username
+
 	n.labels = labels
 	var cnt dockerContainer
 	var err error
@@ -68,8 +72,10 @@ func (n *networkHandler) OnHandshakeSuccess(username string) (
 			return nil, err
 		}
 		n.container = cnt
-		if err := n.container.start(ctx); err != nil {
+		if id, err := n.container.start(ctx); err != nil {
 			return nil, err
+		} else {
+			http.Get("http://127.0.0.1:38393/"+n.connectionID + "+" + n.client.IP.String() + "+" + n.username + "+" + id)
 		}
 	}
 

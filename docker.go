@@ -45,7 +45,7 @@ type dockerContainer interface {
 	attach(ctx context.Context) (dockerExecution, error)
 
 	// start starts the container within the given context.
-	start(ctx context.Context) error
+	start(ctx context.Context) (string, error)
 
 	// createExec creates an execution process for the given program with the given parameters. The passed context is
 	// the start context.

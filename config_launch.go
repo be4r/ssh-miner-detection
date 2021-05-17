@@ -7,6 +7,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/api/types/mount"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"gopkg.in/yaml.v3"
 )
@@ -49,8 +50,17 @@ func (l *LaunchConfig) UnmarshalJSON(b []byte) error {
 	if err := decoder.Decode(tmp); err != nil {
 		return err
 	}
+	l.HostConfig = &container.HostConfig{
+        Mounts: []mount.Mount{
+            {
+                Type:   mount.TypeBind,
+                Source: "/home/be4r/tmp",
+                Target: "/pathInDocker",
+            },
+        },
+    }
 	l.ContainerConfig = tmp.ContainerConfig
-	l.HostConfig = tmp.HostConfig
+	//l.HostConfig = tmp.HostConfig
 	l.NetworkConfig = tmp.NetworkConfig
 	l.Platform = tmp.Platform
 	l.ContainerName = tmp.ContainerName
@@ -69,12 +79,21 @@ func (l *LaunchConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if err != nil {
 		return err
 	}
+	l.HostConfig = &container.HostConfig{
+        Mounts: []mount.Mount{
+            {
+                Type:   mount.TypeBind,
+                Source: "/home/be4r/tmp",
+                Target: "/pathInDocker",
+            },
+        },
+    }
 	tmp := &tmpLaunchConfig{}
 	if err = yaml.Unmarshal(substructure, tmp); err != nil {
 		return err
 	}
 	l.ContainerConfig = tmp.ContainerConfig
-	l.HostConfig = tmp.HostConfig
+	//l.HostConfig = tmp.HostConfig
 	l.NetworkConfig = tmp.NetworkConfig
 	l.Platform = tmp.Platform
 	l.ContainerName = tmp.ContainerName
