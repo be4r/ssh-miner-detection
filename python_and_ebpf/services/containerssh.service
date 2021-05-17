@@ -1,0 +1,16 @@
+[Unit]
+Description=containerssh
+Requires=multi-user.target
+After=network.target
+# AllowIsolate=yes - seems useless for my purpose
+
+[Service]
+User=root
+ExecStart=/home/be4r/stuff/service/containerssh --config=/etc/containerssh/config.yaml
+Restart=always
+TimeoutStartSec=10
+RestartSec=10
+# how to add dependency ....
+
+[Install]
+WantedBy=multi-user.target
