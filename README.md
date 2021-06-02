@@ -1,80 +1,29 @@
-[![ContainerSSH - Launch Containers on Demand](https://containerssh.github.io/images/logo-for-embedding.svg)](https://containerssh.github.io/)
+## Something
+Tracing stuff: ./python\_and\_ebpf
 
-<!--suppress HtmlDeprecatedAttribute -->
-<h1 align="center">ContainerSSH Docker Backend Library</h1>
+Origin of modified module: [docker](https://github.com/containerSSH/docker)
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/containerssh/docker?style=for-the-badge)](https://goreportcard.com/report/github.com/containerssh/docker)
-[![LGTM Alerts](https://img.shields.io/lgtm/alerts/github/ContainerSSH/docker?style=for-the-badge)](https://lgtm.com/projects/g/ContainerSSH/docker/)
+Everything else can be found at [github](https://github.com/containerSSH/containerssh/) or [this website](https://containerssh.io/)
 
-This library implements a backend that connects to a Docker socket and launches a new container for each connection, then runs executes a separate command per channel using `docker exec`. It replaces the legacy `dockerrun` backend.
 
-<p align="center"><strong>⚠⚠⚠ Warning: This is a developer documentation. ⚠⚠⚠</strong><br />The user documentation for ContainerSSH is located at <a href="https://containerssh.io">containerssh.io</a>.</p>
+**localhost:38393/getstats** to return currently running sessions
 
-## Using this library
+*(also its possible to leave **dangling** sessions by somehow incorrectly closing connection on cli side; may need fixing; for ex, 61.177.173.x usually does this)*
 
-This library implements a `NetworkConnectionHandler` from the [sshserver library](https://github.com/containerssh/sshserver). This can be embedded into a connection handler.
 
-The network connection handler can be created with the `New()` method:
+## How to
 
-```go
-var client net.TCPAddr
-connectionID := "0123456789ABCDEF"
-config := docker.Config{
-    //...
-}
-collector := metrics.New()
-dr, err := docker.New(
-    client,
-    connectionID,
-    config,
-    logger,
-    collector.MustCreateCounter("backend_requests", "", ""),
-    collector.MustCreateCounter("backend_failures", "", ""),
-)
-if err != nil {
-    // Handle error
-}
-```
++ ssh-keygen -f ./config/ssh\_host\_rsa\_key
++ cp -r config /etc/containerssh
++ create dir to mount /tmp into (def: /home/be4r/tmp) and change path in ./docker\_impl.go:193
++ build bineries: 
+  + sudo go build -o containerssh-auth cmd/containerssh/main.go
+  + sudo go build -o containerssh cmd/containerssh/main.go
+  + change paths in ./python\_and\_ebpf/services/
++ cp ./python\_and\_ebpf/services/* to /etc/systemd/system/
++ service tracessh start
 
-The `logger` parameter is a logger from the [ContainerSSH logger library](https://github.com/containerssh/log).
 
-The `dr` variable can then be used to create a container on finished handshake:
-
-```go
-ssh, err := dr.OnHandshakeSuccess("provided-connection-username")
-```
-
-Conversely, on disconnect you must call `dr.OnDisconnect()`. The `ssh` variable can then be used to create session channels:
-
-```go
-var channelID uint64 = 0
-extraData := []byte{}
-session, err := ssh.OnSessionChannel(channelID, extraData)
-```
-
-Finally, the session can be used to launch programs:
-
-```go
-var requestID uint64 = 0
-err = session.OnEnvRequest(requestID, "foo", "bar")
-// ...
-requestID = 1
-var stdin io.Reader
-var stdout, stderr io.Writer
-err = session.OnShell(
-    requestID,
-    stdin,
-    stdout,
-    stderr,
-    func(exitStatus ExitStatus) {
-        // ...
-    },
-)
-```
-
-## Operating modes
-
-This library supports several operating modes:
-
-- `connection` creates a container per connection and uses the `docker exec` mechanism to launch SSH programs inside the container. This mode ignores the `CMD` of the container image and uses the `idleProgram` setting to launch inside the container.
-- `session` creates a container per session and potentially results in multiple containers for a single SSH connection. This mode uses the `CMD` of the container image or from the configuration.
+----
+### makefile incoming
+~                           
