@@ -17,13 +17,16 @@ Everything else can be found at [github](https://github.com/containerSSH/contain
 + cp -r config /etc/containerssh
 + create dir to mount /tmp into (def: /home/be4r/tmp) and change path in ./docker\_impl.go:193
 + build bineries: 
-  + sudo go build -o containerssh-auth cmd/containerssh/main.go
+  + sudo go build -o containerssh-auth cmd/containerssh-testauthserver/main.go
   + sudo go build -o containerssh cmd/containerssh/main.go
   + change paths in ./python\_and\_ebpf/services/
 + cp ./python\_and\_ebpf/services/* to /etc/systemd/system/
 + service tracessh start
++ if using defautl AUTH server, set env CONTAINERSSH_ALLOW_ALL=1
 
 
 ----
-### makefile incoming
+### makefile ~~not~~ incoming
++ cd python_and_ebpf
++ ./install.sh
 ~                           
